@@ -1,7 +1,12 @@
 package messages
 
 type Message struct {
-	Sender    string
-	Recipient string
-	Content   string
+	Time      string `json:"time"`
+	Sender    string `json:"sender"`
+	Recipient string `json:"recipient"`
+	Content   string `json:"content"`
+}
+
+type Connection struct {
+	Sender string `json:"sender"`
 }

@@ -1,35 +1,60 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"server/messages"
+	"server/users"
 
-	zmq "github.com/pebbe/zmq4"
+	"github.com/nats-io/nats.go"
 )
 
 func main() {
-	routerSocket, err := zmq.NewSocket(zmq.ROUTER)
+	var natsURL string
+	if url := os.Getenv("NATS_URL"); url != "" {
+		natsURL = url
+	} else {
+		natsURL = nats.DefaultURL
+	}
+
+	nc, err := nats.Connect(natsURL)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer routerSocket.Close()
+	defer nc.Close()
 
-	err = routerSocket.Bind("tcp://*:5555")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Server is running on tcp://*:5555")
+	fmt.Println("Server is running on NATS")
 
 	storage := messages.NewStorage()
 
-	for {
-		msg, err := routerSocket.RecvMessage(0)
+	_, err = nc.Subscribe("connections", func(m *nats.Msg) {
+		var msg messages.Connection
+		err := json.Unmarshal(m.Data, &msg)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		go messages.Process(routerSocket, storage, msg)
+		messages.HandleConnect(nc, storage, msg.Sender)
+		messages.CreateMessageSubscription(nc, storage, msg.Sender)
+	})
+
+	nc.Subscribe("connections-srv", func(m *nats.Msg) {
+		UserList := users.GetUsers()
+
+		response, err := json.Marshal(UserList)
+		if err != nil {
+			log.Printf("Failed to marshal users: %v", err)
+			return
+		}
+
+		m.Respond(response)
+	})
+
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	select {} // Keep the server running
 }

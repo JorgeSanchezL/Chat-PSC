@@ -5,8 +5,8 @@ import (
 )
 
 var (
-	clientMap = []string{}
-	mu        sync.Mutex
+	userList = []string{}
+	mu       sync.Mutex
 )
 
 func AddUser(clientName string) {
@@ -17,28 +17,21 @@ func AddUser(clientName string) {
 		return
 	}
 
-	if clientMap == nil {
-		clientMap = []string{}
+	if userList == nil {
+		userList = []string{}
 	}
 
-	for _, c := range clientMap {
+	for _, c := range userList {
 		if c == clientName {
 			return
 		}
 	}
 
-	clientMap = append(clientMap, clientName)
+	userList = append(userList, clientName)
 }
 
-func UserExists(clientName string) bool {
+func GetUsers() []string {
 	mu.Lock()
 	defer mu.Unlock()
-
-	for _, c := range clientMap {
-		if c == clientName {
-			return true
-		}
-	}
-
-	return false
+	return append([]string(nil), userList...)
 }
